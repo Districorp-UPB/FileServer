@@ -1,0 +1,31 @@
+syntax = "proto3";
+package proto;
+
+option go_package = "github.com/nombre_usuario/nombre_repo/carpeta_proto";
+
+message FileUploadRequest {
+    string file_id = 1;
+    string owner_id = 2;
+    bytes binary_file = 3;
+    string file_name = 4;
+}
+
+message FileUploadResponse {
+    string file_id = 1;
+}
+
+message FileDownloadRequest {
+    string file_id = 1;
+    string owner_id = 2;
+
+}
+
+message FileDownloadResponse {
+    string file_id = 1;
+    bytes binary_file_response = 2;
+}
+
+
+service FileService {
+    rpc Upload(stream FileUploadRequest) returns (FileUploadResponse);
+}
