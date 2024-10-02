@@ -1,4 +1,4 @@
-module github.com/nombre_usuario/nombre_repo
+module github.com/Districorp-UPB/FileServer
 
 go 1.19 // version requerida
 
