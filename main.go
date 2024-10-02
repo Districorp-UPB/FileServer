@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	pb "github.com/nombre_usuario/nombre_repo/carpeta_proto"
-	"github.com/nombre_usuario/nombre_repo/carpeta_server"
+	pb "github.com/Districorp-UPB/FileServer/proto"
+	"github.com/Districorp-UPB/FileServer/server"
 	"google.golang.org/grpc"
 )
 

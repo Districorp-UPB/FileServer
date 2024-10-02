@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	pb "github.com/nombre_usuario/nombre_repo/carpeta_proto"
+	pb "github.com/Districorp-UPB/FileServer/proto"
 )
 
 type FileService struct {
