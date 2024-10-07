@@ -35,6 +35,7 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 		if filePath == "" {
 			fileName = req.FileName
 			ownerId = req.OwnerId
+			var err error
 			filePath, err = uploadToNFS(req)
 			if err != nil {
 				log.Printf("Error al subir el archivo al NFS: %v", err)
