@@ -22,7 +22,17 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			// Fin del archivo, responder con el FileId
+			// Fin del archivo, proceder a guardar y responder con el FileId
+			_, saveErr := uploadToNFS(&pb.FileUploadRequest{
+				FileId:     fileId,
+				BinaryFile: fullBinaryFile,
+				FileName:   fileName,
+			})
+			if saveErr != nil {
+				log.Printf("Error al guardar el archivo en NFS: %v", saveErr)
+				return fmt.Errorf("failed to save file: %w", saveErr)
+			}
+
 			err = stream.SendAndClose(&pb.FileUploadResponse{
 				FileId: fileId,
 			})
@@ -30,6 +40,7 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 				log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
 				return fmt.Errorf("failed to send upload response: %w", err)
 			}
+
 			log.Printf("Archivo %s subido correctamente", fileName)
 			return nil
 		}
@@ -43,19 +54,6 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 		fileId = req.FileId
 		fileName = req.FileName
 	}
-
-	// Guardar el archivo completo en el sistema de archivos
-	_, err = uploadToNFS(&pb.FileUploadRequest{
-		FileId:     fileId,
-		BinaryFile: fullBinaryFile,
-		FileName:   fileName,
-	})
-	if err != nil {
-		log.Printf("Error al subir el archivo al NFS: %v", err)
-		return fmt.Errorf("failed to upload file to NFS: %w", err)
-	}
-
-	return nil
 }
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
