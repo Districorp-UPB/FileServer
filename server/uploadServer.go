@@ -38,7 +38,7 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	return nil
 }
 
-// Nuevo método para descargar un archivo
+// Método para descargar un archivo
 func (s *FileService) Download(req *pb.FileDownloadRequest, stream pb.FileService_DownloadServer) error {
 	// Construir la ruta del archivo según el OwnerId y FileId
 	userPath := fmt.Sprintf("./nfs/files/%s", req.OwnerId)
