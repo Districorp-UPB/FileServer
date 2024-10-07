@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,42 +14,45 @@ type FileService struct {
 }
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
-	// Crear un archivo para almacenar los datos recibidos
-	var fileId string
-	var ownerId string
+	var filePath string
 	var fileName string
+	var ownerId string
 
-	// Procesar cada chunk recibido
+	// Leer los chunks desde el flujo de datos
 	for {
 		req, err := stream.Recv()
 		if err != nil {
-			// Comprobar si se llegó al final del stream
 			if err == io.EOF {
+				// Fin del flujo
 				break
 			}
 			log.Printf("Error al recibir el request de subida de archivo: %v", err)
 			return fmt.Errorf("failed to receive upload request: %w", err)
 		}
 
-		// Almacenar los datos del primer chunk
-		if fileId == "" {
-			fileId = req.FileId
-			ownerId = req.OwnerId
+		// Inicializa los parámetros en el primer chunk
+		if filePath == "" {
 			fileName = req.FileName
-			log.Printf("Comenzando a subir el archivo %s del usuario %s", fileName, ownerId)
+			ownerId = req.OwnerId
+			filePath, err = uploadToNFS(req)
+			if err != nil {
+				log.Printf("Error al subir el archivo al NFS: %v", err)
+				return fmt.Errorf("failed to upload file to NFS: %w", err)
+			}
 		}
 
-		// Intentar subir el archivo al NFS
-		_, err = uploadToNFS(req)
-		if err != nil {
-			log.Printf("Error al subir el archivo al NFS: %v", err)
-			return fmt.Errorf("failed to upload file to NFS: %w", err)
+		// Guardar el chunk en el archivo
+		if err := appendToFile(filePath, req.BinaryFile); err != nil {
+			log.Printf("Error al guardar el chunk en el archivo: %v", err)
+			return fmt.Errorf("failed to append chunk to file: %w", err)
 		}
+
+		log.Printf("Chunk recibido del archivo %s del usuario %s", req.FileName, req.OwnerId)
 	}
 
 	// Responder al cliente con éxito
 	err := stream.SendAndClose(&pb.FileUploadResponse{
-		FileId: fileId,
+		FileId: req.FileId,
 	})
 	if err != nil {
 		log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
@@ -85,6 +87,24 @@ func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 
 	log.Printf("Archivo %s guardado en la ruta %s", fileName, filePath)
 	return filePath, nil
+}
+
+func appendToFile(filePath string, binaryFile []byte) error {
+	fileUpload, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Error al abrir el archivo %s: %v", filePath, err)
+		return fmt.Errorf("failed to open file for appending: %w", err)
+	}
+	defer fileUpload.Close()
+
+	_, err = fileUpload.Write(binaryFile)
+	if err != nil {
+		log.Printf("Error al escribir el archivo %s: %v", filePath, err)
+		return fmt.Errorf("failed to write binary content to file: %w", err)
+	}
+
+	log.Printf("Chunk guardado exitosamente en %s", filePath)
+	return nil
 }
 
 func saveFile(filePath string, binaryFile []byte) error {
