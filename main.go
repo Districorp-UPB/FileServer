@@ -19,7 +19,7 @@ func init() {
 
 func main() {
 	// Servidor gRPC
-	grpcListener, err := net.Listen("tcp", ":50051")
+	grpcListener, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
