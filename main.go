@@ -18,6 +18,7 @@ func init() {
 }
 
 func main() {
+	grpc.EnableTracing = true
 	// Servidor gRPC
 	grpcListener, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {

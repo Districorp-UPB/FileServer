@@ -23,6 +23,7 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 		req, err := stream.Recv()
 		if err == io.EOF {
 			// Fin del archivo, proceder a guardar y responder con el FileId
+			log.Printf("Recibido archivo completo: %s", fileName)
 			_, saveErr := uploadToNFS(&pb.FileUploadRequest{
 				FileId:     fileId,
 				BinaryFile: fullBinaryFile,
@@ -48,6 +49,9 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 			log.Printf("Error al recibir el request de subida de archivo: %v", err)
 			return fmt.Errorf("failed to receive upload request: %w", err)
 		}
+
+		// Log para mostrar que se recibe cada fragmento de archivo
+		log.Printf("Recibiendo fragmento del archivo: %s, tamaño: %d bytes", req.FileName, len(req.BinaryFile))
 
 		// Almacenar la información del archivo
 		fullBinaryFile = append(fullBinaryFile, req.BinaryFile...)
