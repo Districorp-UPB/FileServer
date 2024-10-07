@@ -15,36 +15,46 @@ type FileService struct {
 }
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
-	// Leer el request desde el flujo de datos
+	var fullBinaryFile []byte
+	var fileId, fileName string
+
+	// Leer todas las partes del archivo desde el stream
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			break // Fin del stream
+			// Fin del archivo, responder con el FileId
+			err = stream.SendAndClose(&pb.FileUploadResponse{
+				FileId: fileId,
+			})
+			if err != nil {
+				log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
+				return fmt.Errorf("failed to send upload response: %w", err)
+			}
+			log.Printf("Archivo %s subido correctamente", fileName)
+			return nil
 		}
 		if err != nil {
 			log.Printf("Error al recibir el request de subida de archivo: %v", err)
 			return fmt.Errorf("failed to receive upload request: %w", err)
 		}
 
-		// Intentar subir el archivo al NFS
-		log.Printf("Intentando subir el archivo %s del usuario %s", req.FileName, req.OwnerId)
-		_, err = uploadToNFS(req)
-		if err != nil {
-			log.Printf("Error al subir el archivo al NFS: %v", err)
-			return fmt.Errorf("failed to upload file to NFS: %w", err)
-		}
+		// Almacenar la información del archivo
+		fullBinaryFile = append(fullBinaryFile, req.BinaryFile...)
+		fileId = req.FileId
+		fileName = req.FileName
 	}
 
-	// Responder al cliente con éxito
-	err := stream.SendAndClose(&pb.FileUploadResponse{
-		FileId: "unique-file-id", // Puedes usar un ID real o generarlo
+	// Guardar el archivo completo en el sistema de archivos
+	_, err = uploadToNFS(&pb.FileUploadRequest{
+		FileId:     fileId,
+		BinaryFile: fullBinaryFile,
+		FileName:   fileName,
 	})
 	if err != nil {
-		log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
-		return fmt.Errorf("failed to send upload response: %w", err)
+		log.Printf("Error al subir el archivo al NFS: %v", err)
+		return fmt.Errorf("failed to upload file to NFS: %w", err)
 	}
 
-	log.Printf("Archivo subido correctamente")
 	return nil
 }
 
@@ -52,7 +62,7 @@ func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	// Crear directorio de usuario si no existe
 	userPath := fmt.Sprintf("./nfs/files/%s", req.OwnerId)
 	if _, err := os.Stat(userPath); os.IsNotExist(err) {
-		err := os.MkdirAll(userPath, 0755)
+		err := os.Mkdir(userPath, 0755)
 		if err != nil {
 			log.Printf("Error al crear el directorio del usuario %s: %v", req.OwnerId, err)
 			return "", fmt.Errorf("failed to create user directory: %w", err)

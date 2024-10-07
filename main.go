@@ -25,15 +25,15 @@ func main() {
 	}
 	defer grpcListener.Close()
 
-	// Iniciar servidor gRPC
+	// Iniciar servidor gRPC con timeout de 5 minutos y límite de 1GB
 	grpcServer := grpc.NewServer(
-		grpc.MaxRecvMsgSize(1024*1024*1024), // 1 GB
+		grpc.MaxRecvMsgSize(1024*1024*1024),
 		grpc.ConnectionTimeout(time.Minute*5),
 	)
 	pb.RegisterFileServiceServer(grpcServer, &server.FileService{})
-	log.Println("gRPC server started on port :50051")
+	log.Println("gRPC server started")
 
-	// Ejecutar el servidor en una goroutine
+	// Ejecutar el servidor en una goroutine para manejar las conexiones
 	go func() {
 		if err := grpcServer.Serve(grpcListener); err != nil {
 			log.Fatalf("failed to serve gRPC: %v", err)
