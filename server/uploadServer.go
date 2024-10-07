@@ -54,7 +54,7 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 
 	// Responder al cliente con éxito
 	response := &pb.FileUploadResponse{
-		FileId: req.FileId, // Aquí se utiliza req en la respuesta
+		FileId: req.FileId, // Aquí se utiliza req en la respuesta, que es la última que se recibió
 	}
 	err := stream.SendAndClose(response)
 	if err != nil {
