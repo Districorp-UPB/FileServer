@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	pb "github.com/Districorp-UPB/FileServer/proto"
+	pb "../proto"
 )
 
 type FileService struct {

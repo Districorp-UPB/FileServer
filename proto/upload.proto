@@ -1,8 +1,6 @@
 syntax = "proto3";
 package proto;
 
-option go_package = "github.com/Districorp-UPB/FileServer/proto";
-
 // Request para subir archivo
 message FileUploadRequest {
     string file_id = 1;
