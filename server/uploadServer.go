@@ -15,49 +15,50 @@ type FileService struct {
 }
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
-	var fullBinaryFile []byte
-	var fileId, fileName string
+	// Crear un archivo para almacenar los datos recibidos
+	var fileId string
+	var ownerId string
+	var fileName string
 
-	// Leer todas las partes del archivo desde el stream
+	// Procesar cada chunk recibido
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
-			// Fin del archivo, proceder a guardar y responder con el FileId
-			log.Printf("Recibido archivo completo: %s", fileName)
-			_, saveErr := uploadToNFS(&pb.FileUploadRequest{
-				FileId:     fileId,
-				BinaryFile: fullBinaryFile,
-				FileName:   fileName,
-			})
-			if saveErr != nil {
-				log.Printf("Error al guardar el archivo en NFS: %v", saveErr)
-				return fmt.Errorf("failed to save file: %w", saveErr)
-			}
-
-			err = stream.SendAndClose(&pb.FileUploadResponse{
-				FileId: fileId,
-			})
-			if err != nil {
-				log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
-				return fmt.Errorf("failed to send upload response: %w", err)
-			}
-
-			log.Printf("Archivo %s subido correctamente", fileName)
-			return nil
-		}
 		if err != nil {
+			// Comprobar si se llegó al final del stream
+			if err == io.EOF {
+				break
+			}
 			log.Printf("Error al recibir el request de subida de archivo: %v", err)
 			return fmt.Errorf("failed to receive upload request: %w", err)
 		}
 
-		// Log para mostrar que se recibe cada fragmento de archivo
-		log.Printf("Recibiendo fragmento del archivo: %s, tamaño: %d bytes", req.FileName, len(req.BinaryFile))
+		// Almacenar los datos del primer chunk
+		if fileId == "" {
+			fileId = req.FileId
+			ownerId = req.OwnerId
+			fileName = req.FileName
+			log.Printf("Comenzando a subir el archivo %s del usuario %s", fileName, ownerId)
+		}
 
-		// Almacenar la información del archivo
-		fullBinaryFile = append(fullBinaryFile, req.BinaryFile...)
-		fileId = req.FileId
-		fileName = req.FileName
+		// Intentar subir el archivo al NFS
+		_, err = uploadToNFS(req)
+		if err != nil {
+			log.Printf("Error al subir el archivo al NFS: %v", err)
+			return fmt.Errorf("failed to upload file to NFS: %w", err)
+		}
 	}
+
+	// Responder al cliente con éxito
+	err := stream.SendAndClose(&pb.FileUploadResponse{
+		FileId: fileId,
+	})
+	if err != nil {
+		log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
+		return fmt.Errorf("failed to send upload response: %w", err)
+	}
+
+	log.Printf("Archivo %s subido correctamente por el usuario %s", fileName, ownerId)
+	return nil
 }
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
