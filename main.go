@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"net/http"
 	"time"
 
 	pb "github.com/Districorp-UPB/FileServer/proto"
