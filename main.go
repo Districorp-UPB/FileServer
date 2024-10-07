@@ -3,33 +3,45 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 	"time"
 
 	pb "github.com/Districorp-UPB/FileServer/proto"
 	"github.com/Districorp-UPB/FileServer/server"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 func main() {
-	// Servidor gRPC
+	// Configurar logging básico
+	log.Println("Iniciando el servidor...")
+
+	// Configurar logging avanzado para gRPC
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stderr))
+
+	// Configurar listener en el puerto 50051
 	grpcListener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Error al iniciar el listener: %v", err)
 	}
 	defer grpcListener.Close()
 
-	// Iniciar servidor gRPC con timeout de 5 minutos y limite de 1GB
-	grpcServer := grpc.NewServer(
-		grpc.MaxRecvMsgSize(1024*1024*1024),
-		grpc.ConnectionTimeout(time.Minute*5),
-	)
-	pb.RegisterFileServiceServer(grpcServer, &server.FileService{})
-	log.Println("gRPC server started")
+	log.Println("gRPC listener iniciado en :50051")
 
-	// Ejecutar el servidor en una goroutine para manejar las conexiones
+	// Configurar el servidor gRPC con límite de tamaño y tiempo de espera
+	grpcServer := grpc.NewServer(
+		grpc.MaxRecvMsgSize(1024*1024*1024),   // Máximo 1GB de datos
+		grpc.ConnectionTimeout(time.Minute*5), // Tiempo de espera de 5 minutos
+	)
+
+	// Registrar el servicio de archivos
+	pb.RegisterFileServiceServer(grpcServer, &server.FileService{})
+
+	// Iniciar el servidor gRPC en una goroutine
+	log.Println("Servidor gRPC iniciado y esperando conexiones...")
 	go func() {
 		if err := grpcServer.Serve(grpcListener); err != nil {
-			log.Fatalf("failed to serve gRPC: %v", err)
+			log.Fatalf("Error al servir gRPC: %v", err)
 		}
 	}()
 
