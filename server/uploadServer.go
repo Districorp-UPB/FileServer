@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -51,9 +52,10 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	}
 
 	// Responder al cliente con éxito
-	err := stream.SendAndClose(&pb.FileUploadResponse{
-		FileId: req.FileId,
-	})
+	response := &pb.FileUploadResponse{
+		FileId: req.FileId, // Aquí se utiliza req en la respuesta
+	}
+	err := stream.SendAndClose(response)
 	if err != nil {
 		log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
 		return fmt.Errorf("failed to send upload response: %w", err)
