@@ -15,7 +15,7 @@ import (
 
 func init() {
     // Configurar el logger de gRPC
-    grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stderr))
+    grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stdout, os.Stdout, os.Stderr, 4))
 }
 
 func main() {
