@@ -23,7 +23,13 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	var ownerId string
 	var fileId string
 
-	// Leer los chunks desde el flujo de datos
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic recovered in Upload: %v", r)
+			stream.SendAndClose(&pb.FileUploadResponse{FileId: ""})
+		}
+	}()
+
 	for {
 		req, err := stream.Recv()
 		if err != nil {
@@ -35,7 +41,6 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 			return status.Errorf(codes.Internal, "failed to receive upload request: %v", err)
 		}
 
-		// Inicializa los parámetros en el primer chunk
 		if filePath == "" {
 			fileName = req.FileName
 			ownerId = req.OwnerId
@@ -49,7 +54,6 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 			log.Printf("Nuevo archivo iniciado: %s para el usuario %s", fileName, ownerId)
 		}
 
-		// Guardar el chunk en el archivo
 		if err := appendToFile(filePath, req.BinaryFile); err != nil {
 			log.Printf("Error al guardar el chunk en el archivo: %v", err)
 			return status.Errorf(codes.Internal, "failed to append chunk to file: %v", err)
@@ -59,7 +63,6 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 
 	log.Println("Todos los chunks recibidos, preparando respuesta")
 
-	// Responder al cliente con éxito
 	response := &pb.FileUploadResponse{
 		FileId: fileId,
 	}
@@ -74,22 +77,33 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 }
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
-	// Crear directorio de usuario si no existe
 	userPath := fmt.Sprintf("./nfs/files/%s", req.OwnerId)
-	if _, err := os.Stat(userPath); os.IsNotExist(err) {
-		err := os.MkdirAll(userPath, 0755)
-		if err != nil {
-			log.Printf("Error al crear el directorio del usuario %s: %v", req.OwnerId, err)
-			return "", fmt.Errorf("failed to create user directory: %w", err)
-		}
-		log.Printf("Directorio creado para el usuario %s: %s", req.OwnerId, userPath)
+	if err := os.MkdirAll(userPath, 0755); err != nil {
+		log.Printf("Error al crear el directorio del usuario %s: %v", req.OwnerId, err)
+		return "", fmt.Errorf("failed to create user directory: %w", err)
 	}
+	log.Printf("Directorio creado/verificado para el usuario %s: %s", req.OwnerId, userPath)
 
-	// Guardar archivo en el sistema NFS
 	fileExtension := filepath.Ext(req.FileName)
 	fileName := req.FileId + fileExtension
 	filePath := filepath.Join(userPath, fileName)
-	err := saveFile(filePath, req.BinaryFile)
+
+	// Verificar espacio en disco
+	fs := syscall.Statfs_t{}
+	err := syscall.Statfs(userPath, &fs)
+	if err != nil {
+		log.Printf("Error al verificar espacio en disco: %v", err)
+		return "", fmt.Errorf("failed to check disk space: %w", err)
+	}
+
+	// Calcular espacio libre en bytes
+	freeSpace := fs.Bfree * uint64(fs.Bsize)
+	if freeSpace < uint64(len(req.BinaryFile)) {
+		log.Printf("No hay suficiente espacio en disco. Libre: %d bytes, Necesario: %d bytes", freeSpace, len(req.BinaryFile))
+		return "", fmt.Errorf("not enough disk space")
+	}
+
+	err = saveFile(filePath, req.BinaryFile)
 	if err != nil {
 		log.Printf("Error al guardar el archivo %s: %v", fileName, err)
 		return "", fmt.Errorf("failed to save file: %w", err)
