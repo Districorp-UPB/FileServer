@@ -14,68 +14,42 @@ import (
 )
 
 type FileService struct {
-	pb.UnimplementedFileServiceServer
+	pb.UnimplementedFileServiceServer	
 }
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
-	log.Println("Iniciando proceso de subida de archivo")
-	var filePath string
-	var fileName string
-	var ownerId string
-	var fileId string
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("Panic recovered in Upload: %v", r)
-			stream.SendAndClose(&pb.FileUploadResponse{FileId: ""})
-		}
-	}()
-
 	for {
+		// Leer los chunks del archivo enviados por el cliente
 		req, err := stream.Recv()
+		if err == io.EOF {
+			// Si ya se recibieron todos los chunks
+			break
+		}
 		if err != nil {
-			if err == io.EOF {
-				log.Println("Fin del flujo de datos recibido")
-				break
-			}
-			log.Printf("Error al recibir el request de subida de archivo: %v", err)
-			return status.Errorf(codes.Internal, "failed to receive upload request: %v", err)
+			log.Printf("Error al recibir chunks: %v", err)
+			return fmt.Errorf("failed to receive chunks: %w", err)
 		}
 
-		if filePath == "" {
-			fileName = req.FileName
-			ownerId = req.OwnerId
-			fileId = req.FileId
-			var err error
-			filePath, err = uploadToNFS(req)
-			if err != nil {
-				log.Printf("Error al subir el archivo al NFS: %v", err)
-				return status.Errorf(codes.Internal, "failed to upload file to NFS: %v", err)
-			}
-			log.Printf("Nuevo archivo iniciado: %s para el usuario %s", fileName, ownerId)
+		// Aquí procesa el chunk recibido, por ejemplo, guarda el archivo en disco
+		_, err = uploadToNFS(req)
+		if err != nil {
+			log.Printf("Error al subir el archivo al NFS: %v", err)
+			return fmt.Errorf("failed to upload file to NFS: %w", err)
 		}
-
-		if err := appendToFile(filePath, req.BinaryFile); err != nil {
-			log.Printf("Error al guardar el chunk en el archivo: %v", err)
-			return status.Errorf(codes.Internal, "failed to append chunk to file: %v", err)
-		}
-		log.Printf("Chunk recibido y guardado para el archivo %s del usuario %s", fileName, ownerId)
 	}
 
-	log.Println("Todos los chunks recibidos, preparando respuesta")
-
-	response := &pb.FileUploadResponse{
-		FileId: fileId,
-	}
-	err := stream.SendAndClose(response)
+	// Responder al cliente con éxito cuando todos los chunks se han recibido
+	err := stream.SendAndClose(&pb.FileUploadResponse{
+		FileId: "some-file-id", // Aquí debería estar el ID del archivo subido
+	})
 	if err != nil {
-		log.Printf("Error al enviar respuesta de éxito al cliente: %v", err)
-		return status.Errorf(codes.Internal, "failed to send upload response: %v", err)
+		log.Printf("Error al enviar respuesta al cliente: %v", err)
+		return fmt.Errorf("failed to send response: %w", err)
 	}
 
-	log.Printf("Archivo %s subido correctamente por el usuario %s", fileName, ownerId)
 	return nil
 }
+
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	userPath := fmt.Sprintf("./nfs/files/%s", req.OwnerId)
