@@ -6,6 +6,7 @@ import (
 	"log" // Importar el paquete log
 	"os"
 	"path/filepath"
+	"io"
 
 	pb "github.com/Districorp-UPB/FileServer/proto"
 	
