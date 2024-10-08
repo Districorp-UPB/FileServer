@@ -1,12 +1,11 @@
 package server
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	pb "github.com/Districorp-UPB/FileServer/proto"
 	"google.golang.org/grpc/codes"
