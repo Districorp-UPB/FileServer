@@ -17,15 +17,24 @@ type FileService struct {
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	log.Println("Comenzando la carga del archivo...")
-	
-	// Leer el primer request desde el flujo de datos
+
+	// Acumulador para el FileId
+	var fileId string
+
 	for {
 		req, err := stream.Recv()
 		if err != nil {
+			// Si se termina el flujo, simplemente salimos del bucle
+			if err == io.EOF {
+				break
+			}
 			return fmt.Errorf("failed to receive upload request: %w", err)
 		}
-		
+
 		log.Printf("Recibido chunk del archivo con ID: %s de tamaño %d bytes\n", req.FileId, len(req.BinaryFile))
+
+		// Almacena el fileId
+		fileId = req.FileId
 
 		// Subir archivo
 		_, err = uploadToNFS(req)
@@ -34,18 +43,18 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 		}
 	}
 
-	// Respuesta
-	// Este bloque nunca se alcanzará debido al bucle, se debe enviar la respuesta al final
-	/* err = stream.SendAndClose(&pb.FileUploadResponse{
-		FileId: req.FileId,
+	// Respuesta al cliente
+	err := stream.SendAndClose(&pb.FileUploadResponse{
+		FileId: fileId,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to send upload response: %w", err)
-	} */
+	}
 
 	log.Println("Archivo subido exitosamente.")
 	return nil
 }
+
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	// Si el usuario nunca ha subido un archivo, crear un directorio para el usuario
