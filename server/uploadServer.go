@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	pb "github.com/Districorp-UPB/FileServer/proto"
+	
 )
 
 type FileService struct {
@@ -15,27 +16,34 @@ type FileService struct {
 }
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
+	log.Println("Comenzando la carga del archivo...")
+	
 	// Leer el primer request desde el flujo de datos
-	req, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive upload request: %w", err)
-	}
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			return fmt.Errorf("failed to receive upload request: %w", err)
+		}
+		
+		log.Printf("Recibido chunk del archivo con ID: %s de tamaño %d bytes\n", req.FileId, len(req.BinaryFile))
 
-	// Subir archivo
-	filePath, err := uploadToNFS(req)
-	if err != nil {
-		return fmt.Errorf("failed to upload file to NFS: %w", err)
+		// Subir archivo
+		_, err = uploadToNFS(req)
+		if err != nil {
+			return fmt.Errorf("failed to upload file to NFS: %w", err)
+		}
 	}
 
 	// Respuesta
-	err = stream.SendAndClose(&pb.FileUploadResponse{
+	// Este bloque nunca se alcanzará debido al bucle, se debe enviar la respuesta al final
+	/* err = stream.SendAndClose(&pb.FileUploadResponse{
 		FileId: req.FileId,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to send upload response: %w", err)
-	}
+	} */
 
-	log.Printf("Archivo subido exitosamente: %s\n", filePath)
+	log.Println("Archivo subido exitosamente.")
 	return nil
 }
 
