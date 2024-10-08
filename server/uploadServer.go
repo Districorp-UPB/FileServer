@@ -10,7 +10,7 @@ import (
 )
 
 type FileService struct {
-	pb.UnimplementedFileServiceServer	
+	pb.UnimplementedFileServiceServer
 }
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
@@ -21,11 +21,10 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	}
 
 	// Subir archivo
-	uploadToNFS(req)
+	_, err = uploadToNFS(req)
 	if err != nil {
 		return fmt.Errorf("failed to upload file to NFS: %w", err)
 	}
-
 
 	// Respuesta
 	err = stream.SendAndClose(&pb.FileUploadResponse{
@@ -37,7 +36,6 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 
 	return nil
 }
-
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	// Si el usuario nunca ha subido un archivo, crear un directorio para el usuario
@@ -60,6 +58,8 @@ func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 		return "", fmt.Errorf("failed to upload file: %w", err)
 	}
 
+	// Retorno exitoso con la ruta del archivo
+	return filePath, nil
 }
 
 func saveFile(filePath string, binaryFile []byte) error {
