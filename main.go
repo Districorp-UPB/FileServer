@@ -19,14 +19,23 @@ func init() {
 }
 
 func main() {
+    log.Println("Iniciando la aplicación...")
+
     grpc.EnableTracing = true
 
     // Servidor gRPC
     grpcListener, err := net.Listen("tcp", "0.0.0.0:50051")
     if err != nil {
-        log.Fatalf("failed to listen: %v", err)
+        log.Fatalf("Error crítico: no se pudo escuchar en el puerto 50051: %v", err)
     }
-    defer grpcListener.Close()
+    log.Println("Listener de gRPC creado, esperando conexiones...")
+    defer func() {
+        log.Println("Cerrando el listener de gRPC...")
+        if err := grpcListener.Close(); err != nil {
+            log.Fatalf("Error al cerrar el listener: %v", err)
+        }
+        log.Println("Listener cerrado correctamente.")
+    }()
 
     // Configuración de keepalive
     kasp := keepalive.ServerParameters{
@@ -45,10 +54,13 @@ func main() {
     )
 
     pb.RegisterFileServiceServer(grpcServer, &server.FileService{})
-    log.Println("gRPC server started on port 50051")
+    log.Println("Servidor gRPC iniciado en el puerto 50051.")
 
     // Ejecutar el servidor
+    log.Println("Ejecutando el servidor gRPC...")
     if err := grpcServer.Serve(grpcListener); err != nil {
-        log.Fatalf("failed to serve gRPC: %v", err)
+        log.Fatalf("Error crítico: fallo al servir gRPC: %v", err)
     }
+
+    log.Println("Servidor gRPC detenido.")
 }
