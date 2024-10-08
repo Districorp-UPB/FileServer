@@ -3,13 +3,10 @@ package server
 import (
 	"encoding/base64"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	pb "github.com/Districorp-UPB/FileServer/proto"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type FileService struct {
