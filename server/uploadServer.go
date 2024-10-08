@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/base64"
 	"fmt"
+	"log" // Importar el paquete log
 	"os"
 	"path/filepath"
 
