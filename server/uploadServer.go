@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	pb "github.com/Districorp-UPB/FileServer/proto"
 	"google.golang.org/grpc/codes"
