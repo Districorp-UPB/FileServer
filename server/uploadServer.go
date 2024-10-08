@@ -14,14 +14,14 @@ type FileService struct {
 }
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
-	// Leer el request desde el flujo de datos
+	// Leer el primer request desde el flujo de datos
 	req, err := stream.Recv()
 	if err != nil {
 		return fmt.Errorf("failed to receive upload request: %w", err)
 	}
 
 	// Subir archivo
-	_, err = uploadToNFS(req)
+	filePath, err := uploadToNFS(req)
 	if err != nil {
 		return fmt.Errorf("failed to upload file to NFS: %w", err)
 	}
@@ -34,6 +34,7 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 		return fmt.Errorf("failed to send upload response: %w", err)
 	}
 
+	log.Printf("Archivo subido exitosamente: %s\n", filePath)
 	return nil
 }
 
@@ -76,8 +77,7 @@ func saveFile(filePath string, binaryFile []byte) error {
 	}
 
 	// Escribir el contenido decodificado en el archivo
-	_, err = fileUpload.Write(decodedContent)
-	if err != nil {
+	if _, err = fileUpload.Write(decodedContent); err != nil {
 		return fmt.Errorf("failed to write binary content to file: %w", err)
 	}
 
