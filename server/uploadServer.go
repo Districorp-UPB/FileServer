@@ -1,12 +1,12 @@
 package server
 
 import (
-    "encoding/base64"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 
-    pb "github.com/Districorp-UPB/FileServer/proto"
+	pb "github.com/Districorp-UPB/FileServer/proto"
 )
 
 type FileService struct {
@@ -26,7 +26,6 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 		return fmt.Errorf("failed to upload file to NFS: %w", err)
 	}
 
-
 	// Respuesta
 	err = stream.SendAndClose(&pb.FileUploadResponse{
 		FileId: req.FileId,
@@ -37,7 +36,6 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 
 	return nil
 }
-
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	// Si el usuario nunca ha subido un archivo, crear un directorio para el usuario
@@ -59,7 +57,7 @@ func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to upload file: %w", err)
 	}
-
+	return filePath, nil
 }
 
 func saveFile(filePath string, binaryFile []byte) error {
@@ -83,5 +81,3 @@ func saveFile(filePath string, binaryFile []byte) error {
 
 	return nil
 }
-
-

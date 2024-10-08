@@ -1,14 +1,13 @@
 package main
 
 import (
-    "log"
+	"log"
 	"net"
-	"net/http"
 	"time"
 
-    pb "github.com/Districorp-UPB/FileServer/proto"
-    "github.com/Districorp-UPB/FileServer/server"
-    "google.golang.org/grpc"
+	pb "github.com/Districorp-UPB/FileServer/proto"
+	"github.com/Districorp-UPB/FileServer/server"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -18,7 +17,6 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	defer grpcListener.Close()
-
 
 	// Iniciar servidor gRPC con timeout de 5 minutos y limite de 1GB
 	grpcServer := grpc.NewServer(
@@ -33,6 +31,4 @@ func main() {
 		}
 	}()
 
-	
 }
-
