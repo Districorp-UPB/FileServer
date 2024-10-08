@@ -25,10 +25,16 @@ func main() {
 	)
 	pb.RegisterFileServiceServer(grpcServer, &server.FileService{})
 	log.Println("gRPC server started")
+
+	// Crea un canal para esperar indefinidamente
+	done := make(chan struct{})
 	go func() {
 		if err := grpcServer.Serve(grpcListener); err != nil {
 			log.Fatalf("failed to serve gRPC: %v", err)
 		}
+		close(done) // Cierra el canal cuando el servidor se detenga
 	}()
 
+	// Espera indefinidamente
+	<-done
 }
