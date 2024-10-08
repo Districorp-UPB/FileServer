@@ -3,7 +3,6 @@ package proto;
 
 option go_package = "github.com/Districorp-UPB/FileServer/proto";
 
-// Request para subir archivo
 message FileUploadRequest {
     string file_id = 1;
     string owner_id = 2;
@@ -11,29 +10,22 @@ message FileUploadRequest {
     string file_name = 4;
 }
 
-// Response para subir archivo
 message FileUploadResponse {
     string file_id = 1;
 }
 
-// Request para descargar archivo
 message FileDownloadRequest {
     string file_id = 1;
     string owner_id = 2;
+
 }
 
-// Response para descargar archivo
 message FileDownloadResponse {
     string file_id = 1;
-    string file_name = 2;
-    bytes binary_file_response = 3;  // Contenido binario del archivo
+    bytes binary_file_response = 2;
 }
 
-// Servicio de archivos
-service FileService {
-    // Subir archivo
-    rpc Upload(stream FileUploadRequest) returns (FileUploadResponse);
 
-    // Descargar archivo
-    rpc Download(FileDownloadRequest) returns (stream FileDownloadResponse);
+service FileService {
+    rpc Upload(stream FileUploadRequest) returns (FileUploadResponse);
 }
