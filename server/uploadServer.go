@@ -19,32 +19,28 @@ type FileService struct {
 
 func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	for {
-		// Leer los chunks del archivo enviados por el cliente
 		req, err := stream.Recv()
 		if err == io.EOF {
-			// Si ya se recibieron todos los chunks
 			break
 		}
 		if err != nil {
 			log.Printf("Error al recibir chunks: %v", err)
-			return fmt.Errorf("failed to receive chunks: %w", err)
+			return status.Errorf(codes.Internal, "failed to receive chunks: %v", err)
 		}
 
-		// Aquí procesa el chunk recibido, por ejemplo, guarda el archivo en disco
 		_, err = uploadToNFS(req)
 		if err != nil {
 			log.Printf("Error al subir el archivo al NFS: %v", err)
-			return fmt.Errorf("failed to upload file to NFS: %w", err)
+			return status.Errorf(codes.Internal, "failed to upload file to NFS: %v", err)
 		}
 	}
 
-	// Responder al cliente con éxito cuando todos los chunks se han recibido
 	err := stream.SendAndClose(&pb.FileUploadResponse{
-		FileId: "some-file-id", // Aquí debería estar el ID del archivo subido
+		FileId: "some-file-id",
 	})
 	if err != nil {
 		log.Printf("Error al enviar respuesta al cliente: %v", err)
-		return fmt.Errorf("failed to send response: %w", err)
+		return status.Errorf(codes.Internal, "failed to send response: %v", err)
 	}
 
 	return nil
