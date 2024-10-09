@@ -11,30 +11,25 @@ import (
 )
 
 func main() {
-	// Servidor gRPC
+	// Escuchar en el puerto 50051
 	grpcListener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 	defer grpcListener.Close()
 
-	// Iniciar servidor gRPC con timeout de 5 minutos y limite de 1GB
+	// Iniciar servidor gRPC con límite de 1GB y tiempo de espera de 5 minutos
 	grpcServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(1024*1024*1024),
 		grpc.ConnectionTimeout(time.Minute*5),
 	)
+
+	// Registrar el servicio de archivos
 	pb.RegisterFileServiceServer(grpcServer, &server.FileService{})
-	log.Println("gRPC server started")
+	log.Println("gRPC server started, listening on port 50051")
 
-	// Crea un canal para esperar indefinidamente
-	done := make(chan struct{})
-	go func() {
-		if err := grpcServer.Serve(grpcListener); err != nil {
-			log.Fatalf("failed to serve gRPC: %v", err)
-		}
-		close(done) // Cierra el canal cuando el servidor se detenga
-	}()
-
-	// Espera indefinidamente
-	<-done
+	// Mantener el servidor ejecutándose y escuchando peticiones
+	if err := grpcServer.Serve(grpcListener); err != nil {
+		log.Fatalf("Failed to serve gRPC: %v", err)
+	}
 }
