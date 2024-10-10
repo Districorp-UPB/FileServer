@@ -1,8 +1,8 @@
 package server
 
 import (
-	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -44,17 +44,34 @@ func (s *FileService) Download(req *pb.FileDownloadRequest, stream pb.FileServic
 		return fmt.Errorf("file not found: %w", err)
 	}
 
-	binaryFile, err := os.ReadFile(filePath)
+	file, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	const bufferSize = 1024 * 1024 // 1 MB
+	buffer := make([]byte, bufferSize)
+
+	for {
+		n, err := file.Read(buffer)
+		if err != nil && err != io.EOF {
+			return fmt.Errorf("failed to read file: %w", err)
+		}
+		if n == 0 { // Si no hay más datos para leer
+			break
+		}
+
+		// Enviar fragmento
+		if err := stream.Send(&pb.FileDownloadResponse{
+			FileId:             req.FileId,
+			BinaryFileResponse: buffer[:n],
+		}); err != nil {
+			return fmt.Errorf("failed to send file chunk: %w", err)
+		}
 	}
 
-	encodedContent := base64.StdEncoding.EncodeToString(binaryFile)
-
-	return stream.Send(&pb.FileDownloadResponse{
-		FileId:             req.FileId,
-		BinaryFileResponse: []byte(encodedContent),
-	})
+	return nil
 }
 
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
