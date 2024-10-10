@@ -96,13 +96,16 @@ func saveFile(filePath string, binaryFile []byte) error {
 }
 
 func getFilePath(ownerId, fileId string) (string, error) {
+	// Directorio donde se almacenan los archivos
 	userPath := fmt.Sprintf("./nfs/files/%s", ownerId)
-	fileName := fmt.Sprintf("%s", fileId)
-	filePath := filepath.Join(userPath, fileName)
 
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+	// Buscar archivos con el fileId seguido de cualquier extensión
+	filePattern := fmt.Sprintf("%s*", fileId)
+	matchedFiles, err := filepath.Glob(filepath.Join(userPath, filePattern))
+	if err != nil || len(matchedFiles) == 0 {
 		return "", fmt.Errorf("file does not exist")
 	}
 
-	return filePath, nil
+	// Retornar el primer archivo encontrado
+	return matchedFiles[0], nil
 }
