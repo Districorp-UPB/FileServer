@@ -97,7 +97,7 @@ func saveFile(filePath string, binaryFile []byte) error {
 
 func getFilePath(ownerId, fileId string) (string, error) {
 	userPath := fmt.Sprintf("./nfs/files/%s", ownerId)
-	fileName := fileId
+	fileName := fmt.Sprintf("%s", fileId)
 	filePath := filepath.Join(userPath, fileName)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
