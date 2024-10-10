@@ -20,11 +20,13 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 		return fmt.Errorf("failed to receive upload request: %w", err)
 	}
 
+	// Subir el archivo al NFS
 	_, err = uploadToNFS(req)
 	if err != nil {
 		return fmt.Errorf("failed to upload file to NFS: %w", err)
 	}
 
+	// Enviar la respuesta al cliente
 	err = stream.SendAndClose(&pb.FileUploadResponse{
 		FileId: req.FileId,
 	})
@@ -68,6 +70,7 @@ func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	fileName := req.FileId + fileExtension
 	filePath := filepath.Join(userPath, fileName)
 
+	// Guardar el archivo recibido
 	err := saveFile(filePath, req.BinaryFile)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload file: %w", err)
@@ -83,12 +86,8 @@ func saveFile(filePath string, binaryFile []byte) error {
 	}
 	defer fileUpload.Close()
 
-	decodedContent, err := base64.StdEncoding.DecodeString(string(binaryFile))
-	if err != nil {
-		return fmt.Errorf("failed to decode binary content: %w", err)
-	}
-
-	_, err = fileUpload.Write(decodedContent)
+	// No es necesario decodificar, solo escribir el contenido binario directamente
+	_, err = fileUpload.Write(binaryFile)
 	if err != nil {
 		return fmt.Errorf("failed to write binary content to file: %w", err)
 	}
@@ -98,7 +97,7 @@ func saveFile(filePath string, binaryFile []byte) error {
 
 func getFilePath(ownerId, fileId string) (string, error) {
 	userPath := fmt.Sprintf("./nfs/files/%s", ownerId)
-	fileName := fmt.Sprintf("%s", fileId)
+	fileName := fileId
 	filePath := filepath.Join(userPath, fileName)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
