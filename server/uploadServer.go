@@ -1,8 +1,8 @@
 package server
 
 import (
+	"encoding/base64"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -37,43 +37,24 @@ func (s *FileService) Upload(stream pb.FileService_UploadServer) error {
 	return nil
 }
 
-// Manejo de la descarga de archivos
 func (s *FileService) Download(req *pb.FileDownloadRequest, stream pb.FileService_DownloadServer) error {
 	filePath, err := getFilePath(req.OwnerId, req.FileId)
 	if err != nil {
 		return fmt.Errorf("file not found: %w", err)
 	}
 
-	file, err := os.Open(filePath)
+	binaryFile, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	const bufferSize = 1024 * 1024 // 1 MB
-	buffer := make([]byte, bufferSize)
-
-	for {
-		n, err := file.Read(buffer)
-		if err != nil && err != io.EOF {
-			return fmt.Errorf("failed to read file: %w", err)
-		}
-		if n == 0 { // Si no hay más datos para leer
-			break
-		}
-
-		// Enviar fragmento
-		if err := stream.Send(&pb.FileDownloadResponse{
-			FileId:             req.FileId,
-			BinaryFileResponse: buffer[:n],
-		}); err != nil {
-			return fmt.Errorf("failed to send file chunk: %w", err)
-		}
+		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	return nil
+	encodedContent := base64.StdEncoding.EncodeToString(binaryFile)
+
+	return stream.Send(&pb.FileDownloadResponse{
+		FileId:             req.FileId,
+		BinaryFileResponse: []byte(encodedContent),
+	})
 }
-
 func uploadToNFS(req *pb.FileUploadRequest) (string, error) {
 	userPath := fmt.Sprintf("./nfs/files/%s", req.OwnerId)
 	if _, err := os.Stat(userPath); os.IsNotExist(err) {
